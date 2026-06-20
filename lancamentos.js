@@ -23,4 +23,5 @@ const TODOS = ["Gabriel", "Clara", "Aline", "Renan", "Fonte", "Rosana"];
 window.LANCAMENTOS = [
   { desc: "Uber", valor: "12,97", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-19" },
   { desc: "Uber", valor: "15,99", moeda: "EUR", pagou: ["Aline"], dividir: TODOS, data: "2026-06-19" },
+  { desc: "Uber", valor: "8,97", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara", "Aline", "Fonte", "Rosana"], data: "2026-06-20" },
 ];
