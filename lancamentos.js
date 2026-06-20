@@ -30,4 +30,5 @@ window.LANCAMENTOS = [
   { desc: "Restaurante", valor: "4,52", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara"], data: "2026-06-20" },
   { desc: "Restaurante", valor: "24,50", moeda: "EUR", pagou: ["Clara"], dividir: ["Clara", "Gabriel"], data: "2026-06-20" },
   { desc: "Uber", valor: "16,97", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-20" },
+  { desc: "Jantar e restaurante", valor: "97,00", moeda: "EUR", pagou: ["Clara"], dividir: ["Clara", "Gabriel"], data: "2026-06-20" },
 ];
