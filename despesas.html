@@ -277,6 +277,10 @@
     .sec-sub { font-size: .72rem; color: var(--muted); margin-bottom: 10px; margin-top: -6px; }
 
     .footer-note { text-align:center; font-size:.7rem; color:var(--muted); padding: 6px 14px; }
+
+    .info-card { background: #eef4fb; border: 1px solid #d4e3f3; }
+    .info-text { font-size: .85rem; color: #2c4a66; }
+    .info-text em { color: var(--primary); font-style: italic; }
   </style>
 </head>
 <body>
@@ -291,50 +295,14 @@
 
   <div class="wrap">
 
-    <!-- New expense form -->
-    <div class="card">
-      <h2><span class="emoji">➕</span> Novo lançamento</h2>
-
-      <div class="field">
-        <label class="fld">Descrição</label>
-        <input type="text" id="desc" placeholder="Ex.: Jantar em Roma, Táxi, Hotel...">
-      </div>
-
-      <div class="row field">
-        <div>
-          <label class="fld">Valor</label>
-          <input type="tel" inputmode="decimal" id="value" placeholder="0,00">
-        </div>
-        <div>
-          <label class="fld">Moeda</label>
-          <div class="cur-choice">
-            <button type="button" id="cur-EUR" class="sel" onclick="setFormCurrency('EUR')">€</button>
-            <button type="button" id="cur-BRL" onclick="setFormCurrency('BRL')">R$</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="field">
-        <label class="fld">💳 Quem pagou?</label>
-        <div class="people-grid" id="payers"></div>
-        <div class="quick">
-          <button type="button" onclick="quickSet('payers', true)">Todos</button>
-          <button type="button" onclick="quickSet('payers', false)">Limpar</button>
-        </div>
-        <div class="helper">Se marcar mais de um, o valor pago é dividido igualmente entre eles.</div>
-      </div>
-
-      <div class="field">
-        <label class="fld">👥 Quem participa da divisão?</label>
-        <div class="people-grid" id="participants"></div>
-        <div class="quick">
-          <button type="button" onclick="quickSet('participants', true)">Todos</button>
-          <button type="button" onclick="quickSet('participants', false)">Limpar</button>
-        </div>
-        <div class="helper">O custo é rachado em partes iguais entre os marcados.</div>
-      </div>
-
-      <button class="btn-primary" onclick="addExpense()">Lançar pagamento</button>
+    <!-- Info: how entries are added -->
+    <div class="card info-card">
+      <h2><span class="emoji">💬</span> Lançamentos pela conversa</h2>
+      <p class="info-text">
+        Os gastos são registrados quando o Gabriel dita na conversa com o Claude.
+        Ex.: <em>"Jantar em Roma, 120 euros, paguei eu, dividir entre todos"</em>.
+        Depois é só atualizar esta página para ver os totais.
+      </p>
     </div>
 
     <!-- Settlement -->
@@ -356,39 +324,47 @@
       <div id="entries"></div>
     </div>
 
-    <div class="footer-note">Os dados ficam salvos neste aparelho. €uro e R$eal são contabilizados separadamente.</div>
+    <div class="footer-note">€uro e R$eal são contabilizados separadamente. Lançamentos atualizados na conversa com o Claude.</div>
   </div>
 
+  <script src="lancamentos.js"></script>
   <script>
     "use strict";
 
     const PEOPLE = ["Gabriel", "Clara", "Aline", "Renan", "Fonte", "Rosana"];
-    const STORAGE_KEY = "divisao_despesas_v1";
     const CUR = {
       EUR: { symbol: "€", label: "Euro", locale: "pt-PT" },
       BRL: { symbol: "R$", label: "Real", locale: "pt-BR" }
     };
 
-    let state = loadState();           // { expenses: [...] }
     let viewCurrency = "EUR";          // which currency the dashboard shows
-    let formCurrency = "EUR";          // selected currency in the form
-    let formPayers = new Set();
-    let formParticipants = new Set();
+    let ALL = [];                      // normalized list of all expenses
 
-    /* ---------- Persistence ---------- */
-    function loadState() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.expenses)) return parsed;
+    /* ---------- Load data from lancamentos.js ---------- */
+    // Accepts the friendly format authored in lancamentos.js and
+    // normalizes it into { id, desc, cents, currency, payers, participants, ts }.
+    function loadExpenses() {
+      const raw = Array.isArray(window.LANCAMENTOS) ? window.LANCAMENTOS : [];
+      const valid = PEOPLE;
+      const out = [];
+      raw.forEach((e, idx) => {
+        if (!e) return;
+        const cents = parseValueToCents(e.valor != null ? e.valor : e.cents);
+        const currency = (e.moeda || e.currency || "EUR").toUpperCase() === "BRL" ? "BRL" : "EUR";
+        const payers = (e.pagou || e.payers || []).filter(n => valid.includes(n));
+        const participants = (e.dividir || e.participants || []).filter(n => valid.includes(n));
+        if (isNaN(cents) || cents <= 0 || payers.length === 0 || participants.length === 0) {
+          console.warn("Lançamento ignorado (dados incompletos):", e);
+          return;
         }
-      } catch (e) { /* ignore */ }
-      return { expenses: [] };
-    }
-    function saveState() {
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-      catch (e) { alert("Não foi possível salvar os dados neste aparelho."); }
+        const ts = e.data ? new Date(e.data + "T12:00:00").getTime() : (e.ts || idx);
+        out.push({
+          id: e.id || ("L" + idx),
+          desc: e.desc || "(sem descrição)",
+          cents, currency, payers, participants, ts
+        });
+      });
+      return out;
     }
 
     /* ---------- Money helpers (work in integer cents) ---------- */
@@ -421,79 +397,6 @@
       return parts;
     }
 
-    /* ---------- Build form UI ---------- */
-    function buildChips() {
-      const payersEl = document.getElementById("payers");
-      const partEl = document.getElementById("participants");
-      payersEl.innerHTML = "";
-      partEl.innerHTML = "";
-      PEOPLE.forEach(name => {
-        const p = document.createElement("div");
-        p.className = "chip" + (formPayers.has(name) ? " on-pay" : "");
-        p.textContent = name;
-        p.onclick = () => { toggle(formPayers, name); buildChips(); };
-        payersEl.appendChild(p);
-
-        const q = document.createElement("div");
-        q.className = "chip" + (formParticipants.has(name) ? " on-part" : "");
-        q.textContent = name;
-        q.onclick = () => { toggle(formParticipants, name); buildChips(); };
-        partEl.appendChild(q);
-      });
-    }
-    function toggle(set, name) { set.has(name) ? set.delete(name) : set.add(name); }
-    function quickSet(which, all) {
-      const set = which === "payers" ? formPayers : formParticipants;
-      set.clear();
-      if (all) PEOPLE.forEach(n => set.add(n));
-      buildChips();
-    }
-    function setFormCurrency(cur) {
-      formCurrency = cur;
-      document.getElementById("cur-EUR").classList.toggle("sel", cur === "EUR");
-      document.getElementById("cur-BRL").classList.toggle("sel", cur === "BRL");
-    }
-
-    /* ---------- Add / remove expense ---------- */
-    function addExpense() {
-      const desc = document.getElementById("desc").value.trim();
-      const cents = parseValueToCents(document.getElementById("value").value);
-
-      if (!desc) { alert("Informe uma descrição."); return; }
-      if (isNaN(cents) || cents <= 0) { alert("Informe um valor válido (ex.: 12,97)."); return; }
-      if (formPayers.size === 0) { alert("Marque quem pagou."); return; }
-      if (formParticipants.size === 0) { alert("Marque quem participa da divisão."); return; }
-
-      state.expenses.push({
-        id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
-        desc,
-        cents,
-        currency: formCurrency,
-        payers: [...formPayers],
-        participants: [...formParticipants],
-        ts: Date.now()
-      });
-      saveState();
-
-      // reset form (keep currency selection)
-      document.getElementById("desc").value = "";
-      document.getElementById("value").value = "";
-      formPayers.clear();
-      formParticipants.clear();
-      buildChips();
-      viewCurrency = formCurrency;
-      syncTabs();
-      render();
-      window.scrollTo({ top: document.querySelector(".card:nth-of-type(2)").offsetTop - 70, behavior: "smooth" });
-    }
-
-    function removeExpense(id) {
-      if (!confirm("Remover este lançamento?")) return;
-      state.expenses = state.expenses.filter(e => e.id !== id);
-      saveState();
-      render();
-    }
-
     /* ---------- Calculations (per currency, in cents) ---------- */
     // returns { name: {paid, owed} } in cents for one expense
     function expenseBreakdown(exp) {
@@ -509,7 +412,7 @@
     function computeBalances(currency) {
       const bal = {};
       PEOPLE.forEach(n => bal[n] = 0);
-      state.expenses.filter(e => e.currency === currency).forEach(exp => {
+      ALL.filter(e => e.currency === currency).forEach(exp => {
         const b = expenseBreakdown(exp);
         PEOPLE.forEach(n => { bal[n] += b[n].paid - b[n].owed; });
       });
@@ -540,7 +443,7 @@
     }
 
     function currencyTotal(currency) {
-      return state.expenses.filter(e => e.currency === currency)
+      return ALL.filter(e => e.currency === currency)
         .reduce((s, e) => s + e.cents, 0);
     }
 
@@ -553,7 +456,7 @@
 
     function render() {
       const cur = viewCurrency;
-      const expenses = state.expenses.filter(e => e.currency === cur);
+      const expenses = ALL.filter(e => e.currency === cur);
 
       // total
       document.getElementById("grand-total").textContent = fmt(currencyTotal(cur), cur);
@@ -628,7 +531,6 @@
                 <div class="entry-amt">${fmt(exp.cents, exp.currency)}</div>
               </div>
               <div class="entry-detail">${detail}</div>
-              <button class="btn-del" onclick="removeExpense('${exp.id}')">Remover lançamento</button>
             </div>`;
         }).join("");
       }
@@ -642,8 +544,7 @@
     }
 
     /* ---------- Init ---------- */
-    buildChips();
-    setFormCurrency("EUR");
+    ALL = loadExpenses();
     syncTabs();
     render();
   </script>
