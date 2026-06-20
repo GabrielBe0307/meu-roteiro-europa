@@ -21,8 +21,5 @@
 const TODOS = ["Gabriel", "Clara", "Aline", "Renan", "Fonte", "Rosana"];
 
 window.LANCAMENTOS = [
-  // Ainda não há lançamentos.
-  // Exemplo (descomente para testar):
-  // { desc: "Jantar em Roma", valor: "120,00", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-18" },
-  // { desc: "Táxi aeroporto", valor: "30,00", moeda: "EUR", pagou: ["Clara", "Aline"], dividir: ["Gabriel", "Clara", "Aline"], data: "2026-06-18" },
+  { desc: "Uber", valor: "12,97", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-19" },
 ];
