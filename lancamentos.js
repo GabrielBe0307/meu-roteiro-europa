@@ -25,4 +25,5 @@ window.LANCAMENTOS = [
   { desc: "Uber", valor: "15,99", moeda: "EUR", pagou: ["Aline"], dividir: TODOS, data: "2026-06-19" },
   { desc: "Uber", valor: "8,97", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara", "Aline", "Fonte", "Rosana"], data: "2026-06-20" },
   { desc: "Uber", valor: "267,09", moeda: "BRL", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara", "Fonte", "Rosana"], data: "2026-06-18" },
+  { desc: "Compras diversas", valor: "176,50", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara"], data: "2026-06-20" },
 ];
