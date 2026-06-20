@@ -14,6 +14,12 @@ Uso:  python3 gerar_resumo.py
 Saída: resumo.png
 """
 import json, subprocess, os
+from datetime import datetime
+try:
+    from zoneinfo import ZoneInfo
+    TZ = ZoneInfo("America/Sao_Paulo")
+except Exception:
+    TZ = None
 from PIL import Image, ImageDraw, ImageFont
 
 PEOPLE = ["Gabriel", "Clara", "Aline", "Renan", "Fonte", "Rosana"]
@@ -104,6 +110,8 @@ f_tx     = F("DejaVuSans.ttf", 25)
 f_subh   = F("DejaVuSans-Bold.ttf", 25)
 f_entry  = F("DejaVuSans-Bold.ttf", 24)
 f_small  = F("DejaVuSans.ttf", 19)
+f_date   = F("DejaVuSans-Bold.ttf", 19)
+f_upd    = F("DejaVuSans.ttf", 21)
 f_foot   = F("DejaVuSans.ttf", 20)
 
 # cores
@@ -122,11 +130,13 @@ PAD = 48
 CONTENT_W = W - 2 * PAD
 _md = ImageDraw.Draw(Image.new("RGB", (10, 10)))
 
-def wrap(text, font, max_w):
+def wrap(text, font, first_w, rest_w=None):
+    rest_w = rest_w if rest_w is not None else first_w
     words = text.split()
     lines, cur = [], ""
     for w in words:
         t = (cur + " " + w).strip()
+        max_w = first_w if not lines else rest_w
         if _md.textlength(t, font=font) <= max_w or not cur:
             cur = t
         else:
@@ -139,11 +149,12 @@ def entry_layout(e, sym):
     vw = _md.textlength(valtxt, font=f_entry)
     dlines = wrap(e["desc"], f_entry, CONTENT_W - vw - 18)
     d = e.get("data", "")
-    dd = (d[8:10] + "/" + d[5:7] + " · ") if len(d) >= 10 else ""
-    meta = dd + "Pagou: " + ", ".join(e["pagou"]) + "  ·  Dividiu: " + ", ".join(e["dividir"])
-    mlines = wrap(meta, f_small, CONTENT_W)
+    datestr = (d[8:10] + "/" + d[5:7] + "/" + d[0:4]) if len(d) >= 10 else ""
+    dw = (_md.textlength(datestr, font=f_date) + 14) if datestr else 0
+    meta = "Pagou: " + ", ".join(e["pagou"]) + "  ·  Dividiu: " + ", ".join(e["dividir"])
+    mlines = wrap(meta, f_small, CONTENT_W - dw, CONTENT_W)
     h = len(dlines) * 30 + len(mlines) * 24 + 18
-    return dlines, mlines, valtxt, vw, h
+    return dlines, mlines, valtxt, vw, datestr, dw, h
 
 def card_height(rows, tx, entries, sym):
     h = 24            # top pad
@@ -156,7 +167,7 @@ def card_height(rows, tx, entries, sym):
     h += 22           # gap
     h += 44           # entries title
     for e in entries:
-        h += entry_layout(e, sym)[4]
+        h += entry_layout(e, sym)[6]
     h += 24           # bottom pad
     return h
 
@@ -170,7 +181,8 @@ def draw_image(exps):
             rows = [n for n in PEOPLE if paid[n] != 0 or owed[n] != 0]
             blocks.append((m, total, paid, owed, bal, settle(bal), rows, ents))
 
-    total_h = 150 + 30
+    HEAD_H = 188
+    total_h = HEAD_H + 30
     for (m, total, paid, owed, bal, tx, rows, ents) in blocks:
         total_h += card_height(rows, tx, ents, CUR[m]["sym"]) + 28
     total_h += 90
@@ -179,11 +191,13 @@ def draw_image(exps):
     d = ImageDraw.Draw(img)
 
     # header
-    d.rectangle([0, 0, W, 150], fill=C_HEAD)
-    d.text((PAD, 38), "Resumo de Despesas", font=f_title, fill=C_WHITE)
-    d.text((PAD, 92), "Viagem Europa · 6 pessoas · € e R$ separados",
+    d.rectangle([0, 0, W, HEAD_H], fill=C_HEAD)
+    d.text((PAD, 34), "Resumo de Despesas", font=f_title, fill=C_WHITE)
+    d.text((PAD, 88), "Viagem Europa · 6 pessoas · € e R$ separados",
            font=f_sub, fill=(210, 224, 238))
-    y = 150 + 30
+    upd = "Atualizado em " + datetime.now(TZ).strftime("%d/%m/%Y às %H:%M")
+    d.text((PAD, 132), upd, font=f_upd, fill=(150, 190, 225))
+    y = HEAD_H + 30
 
     for (m, total, paid, owed, bal, tx, rows, ents) in blocks:
         sym = CUR[m]["sym"]
@@ -234,13 +248,16 @@ def draw_image(exps):
         d.text((PAD + 4, cy), "Compras (histórico):", font=f_subh, fill=C_HEAD)
         cy += 44
         for e in ents:
-            dlines, mlines, valtxt, vw, eh = entry_layout(e, sym)
+            dlines, mlines, valtxt, vw, datestr, dw, eh = entry_layout(e, sym)
             d.text((W - PAD - vw, cy), valtxt, font=f_entry, fill=C_TEXT)
             for i, ln in enumerate(dlines):
                 d.text((PAD + 4, cy + i * 30), ln, font=f_entry, fill=C_TEXT)
             my = cy + len(dlines) * 30 + 2
+            if datestr:
+                d.text((PAD + 4, my), datestr, font=f_date, fill=accent)
             for i, ln in enumerate(mlines):
-                d.text((PAD + 4, my + i * 24), ln, font=f_small, fill=C_MUTED)
+                x = PAD + 4 + (dw if i == 0 else 0)
+                d.text((x, my + i * 24), ln, font=f_small, fill=C_MUTED)
             cy += eh
 
         y += ch + 28
