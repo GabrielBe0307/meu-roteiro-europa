@@ -26,4 +26,5 @@ window.LANCAMENTOS = [
   { desc: "Uber", valor: "8,97", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara", "Aline", "Fonte", "Rosana"], data: "2026-06-20" },
   { desc: "Uber", valor: "267,09", moeda: "BRL", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara", "Fonte", "Rosana"], data: "2026-06-18" },
   { desc: "Compras diversas (passagem de ônibus, taxa de turismo e conta do restaurante)", valor: "176,50", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Gabriel", "Clara"], data: "2026-06-20" },
+  { desc: "Shots de licor de cereja", valor: "6,00", moeda: "EUR", pagou: ["Renan"], dividir: ["Gabriel", "Clara", "Aline", "Renan"], data: "2026-06-20" },
 ];
