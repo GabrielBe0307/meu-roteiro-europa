@@ -4,10 +4,16 @@
 Gera uma imagem (PNG) com o resumo das despesas da viagem, pronta para
 mandar no WhatsApp. Lê os dados de lancamentos.js (a mesma fonte do app).
 
+Mostra, por moeda (Euro e Real, sempre separados):
+  - total gasto
+  - saldo de cada pessoa
+  - acerto de contas (quem transfere para quem)
+  - histórico de compras (com quem pagou e, em letra menor, quem dividiu)
+
 Uso:  python3 gerar_resumo.py
 Saída: resumo.png
 """
-import json, subprocess, os, sys
+import json, subprocess, os
 from PIL import Image, ImageDraw, ImageFont
 
 PEOPLE = ["Gabriel", "Clara", "Aline", "Renan", "Fonte", "Rosana"]
@@ -15,26 +21,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 CUR = {"EUR": {"sym": "€", "name": "EURO"}, "BRL": {"sym": "R$", "name": "REAL"}}
 
 # ---------- carregar dados de lancamentos.js ----------
-def load_expenses():
-    out = subprocess.check_output(
-        ["node", "-e",
-         "global.window={};require('./lancamentos.js');"
-         "process.stdout.write(JSON.stringify(global.window.LANCAMENTOS||[]))"],
-        cwd=HERE)
-    raw = json.loads(out.decode("utf-8"))
-    exps = []
-    for e in raw:
-        valor = e.get("valor", e.get("cents"))
-        cents = parse_cents(valor)
-        moeda = "BRL" if str(e.get("moeda", "EUR")).upper() == "BRL" else "EUR"
-        pagou = [n for n in e.get("pagou", []) if n in PEOPLE]
-        dividir = [n for n in e.get("dividir", []) if n in PEOPLE]
-        if cents is None or cents <= 0 or not pagou or not dividir:
-            continue
-        exps.append({"desc": e.get("desc", ""), "cents": cents, "moeda": moeda,
-                     "pagou": pagou, "dividir": dividir, "data": e.get("data", "")})
-    return exps
-
 def parse_cents(v):
     if v is None: return None
     s = str(v).strip()
@@ -46,6 +32,25 @@ def parse_cents(v):
         return round(float(s) * 100)
     except ValueError:
         return None
+
+def load_expenses():
+    out = subprocess.check_output(
+        ["node", "-e",
+         "global.window={};require('./lancamentos.js');"
+         "process.stdout.write(JSON.stringify(global.window.LANCAMENTOS||[]))"],
+        cwd=HERE)
+    raw = json.loads(out.decode("utf-8"))
+    exps = []
+    for e in raw:
+        cents = parse_cents(e.get("valor", e.get("cents")))
+        moeda = "BRL" if str(e.get("moeda", "EUR")).upper() == "BRL" else "EUR"
+        pagou = [n for n in e.get("pagou", []) if n in PEOPLE]
+        dividir = [n for n in e.get("dividir", []) if n in PEOPLE]
+        if cents is None or cents <= 0 or not pagou or not dividir:
+            continue
+        exps.append({"desc": e.get("desc", ""), "cents": cents, "moeda": moeda,
+                     "pagou": pagou, "dividir": dividir, "data": e.get("data", "")})
+    return exps
 
 def split_cents(total, n):
     base = total // n
@@ -94,8 +99,11 @@ f_sectot = F("DejaVuSans-Bold.ttf", 26)
 f_name   = F("DejaVuSans-Bold.ttf", 27)
 f_val    = F("DejaVuSans-Bold.ttf", 27)
 f_lbl    = F("DejaVuSans.ttf", 21)
-f_tx     = F("DejaVuSans.ttf", 25)
 f_txb    = F("DejaVuSans-Bold.ttf", 25)
+f_tx     = F("DejaVuSans.ttf", 25)
+f_subh   = F("DejaVuSans-Bold.ttf", 25)
+f_entry  = F("DejaVuSans-Bold.ttf", 24)
+f_small  = F("DejaVuSans.ttf", 19)
 f_foot   = F("DejaVuSans.ttf", 20)
 
 # cores
@@ -111,56 +119,85 @@ C_CARD = (255, 255, 255)
 
 W = 1080
 PAD = 48
+CONTENT_W = W - 2 * PAD
+_md = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+
+def wrap(text, font, max_w):
+    words = text.split()
+    lines, cur = [], ""
+    for w in words:
+        t = (cur + " " + w).strip()
+        if _md.textlength(t, font=font) <= max_w or not cur:
+            cur = t
+        else:
+            lines.append(cur); cur = w
+    if cur: lines.append(cur)
+    return lines or [""]
+
+def entry_layout(e, sym):
+    valtxt = fmt(e["cents"], sym)
+    vw = _md.textlength(valtxt, font=f_entry)
+    dlines = wrap(e["desc"], f_entry, CONTENT_W - vw - 18)
+    d = e.get("data", "")
+    dd = (d[8:10] + "/" + d[5:7] + " · ") if len(d) >= 10 else ""
+    meta = dd + "Pagou: " + ", ".join(e["pagou"]) + "  ·  Dividiu: " + ", ".join(e["dividir"])
+    mlines = wrap(meta, f_small, CONTENT_W)
+    h = len(dlines) * 30 + len(mlines) * 24 + 18
+    return dlines, mlines, valtxt, vw, h
+
+def card_height(rows, tx, entries, sym):
+    h = 24            # top pad
+    h += 64           # section title
+    h += 14           # after line
+    h += len(rows) * 52
+    h += 10
+    h += 44           # settlement title
+    h += max(1, len(tx)) * 46
+    h += 22           # gap
+    h += 44           # entries title
+    for e in entries:
+        h += entry_layout(e, sym)[4]
+    h += 24           # bottom pad
+    return h
 
 def draw_image(exps):
-    # primeiro mede a altura
-    blocks = []  # (moeda) só as que têm gasto
+    blocks = []
     for m in ["EUR", "BRL"]:
         total, paid, owed, bal = compute(exps, m)
         if total > 0:
-            blocks.append((m, total, paid, owed, bal, settle(bal)))
+            ents = sorted([e for e in exps if e["moeda"] == m],
+                          key=lambda e: (e.get("data", "9999"),))
+            rows = [n for n in PEOPLE if paid[n] != 0 or owed[n] != 0]
+            blocks.append((m, total, paid, owed, bal, settle(bal), rows, ents))
 
-    # estimativa de altura
-    h = 0
-    h += 150  # header
-    h += 30
-    for (m, total, paid, owed, bal, tx) in blocks:
-        h += 70                      # título seção
-        rows = sum(1 for n in PEOPLE if paid[n] != 0 or owed[n] != 0)
-        h += rows * 52 + 30          # saldos
-        h += 50                      # subtítulo acerto
-        h += max(1, len(tx)) * 46 + 30
-        h += 40                      # respiro
-    h += 90  # rodapé
+    total_h = 150 + 30
+    for (m, total, paid, owed, bal, tx, rows, ents) in blocks:
+        total_h += card_height(rows, tx, ents, CUR[m]["sym"]) + 28
+    total_h += 90
 
-    img = Image.new("RGB", (W, h), C_BG)
+    img = Image.new("RGB", (W, total_h), C_BG)
     d = ImageDraw.Draw(img)
 
-    # ---- header ----
+    # header
     d.rectangle([0, 0, W, 150], fill=C_HEAD)
     d.text((PAD, 38), "Resumo de Despesas", font=f_title, fill=C_WHITE)
     d.text((PAD, 92), "Viagem Europa · 6 pessoas · € e R$ separados",
            font=f_sub, fill=(210, 224, 238))
     y = 150 + 30
 
-    def card(top, height):
-        d.rounded_rectangle([PAD - 14, top, W - (PAD - 14), top + height],
-                            radius=18, fill=C_CARD)
-
-    for (m, total, paid, owed, bal, tx) in blocks:
+    for (m, total, paid, owed, bal, tx, rows, ents) in blocks:
         sym = CUR[m]["sym"]
-        rows = [n for n in PEOPLE if paid[n] != 0 or owed[n] != 0]
-        card_h = 70 + len(rows) * 52 + 30 + 50 + max(1, len(tx)) * 46 + 24
-        card(y, card_h)
+        ch = card_height(rows, tx, ents, sym)
+        d.rounded_rectangle([PAD - 14, y, W - (PAD - 14), y + ch], radius=18, fill=C_CARD)
         cy = y + 24
 
-        # título da seção
+        # título da seção + total
         accent = C_HEAD if m == "EUR" else C_GREEN
         d.rounded_rectangle([PAD, cy + 4, PAD + 10, cy + 40], radius=5, fill=accent)
         d.text((PAD + 26, cy), CUR[m]["name"], font=f_sec, fill=accent)
         ttot = fmt(total, sym)
-        tw = d.textlength(ttot, font=f_sectot)
-        d.text((W - (PAD) - tw, cy + 6), ttot, font=f_sectot, fill=C_TEXT)
+        d.text((W - PAD - _md.textlength(ttot, font=f_sectot), cy + 6),
+               ttot, font=f_sectot, fill=C_TEXT)
         cy += 64
         d.line([PAD, cy, W - PAD, cy], fill=C_LINE, width=2)
         cy += 14
@@ -169,38 +206,45 @@ def draw_image(exps):
         for n in rows:
             v = bal[n]
             d.text((PAD + 4, cy), n, font=f_name, fill=C_TEXT)
-            if v > 0:
-                txt, col, lbl = fmt(v, sym), C_GREEN, "a receber"
-            elif v < 0:
-                txt, col, lbl = fmt(v, sym), C_RED, "a pagar"
-            else:
-                txt, col, lbl = fmt(0, sym), C_MUTED, "quitado"
-            vw = d.textlength(txt, font=f_val)
-            d.text((W - PAD - vw, cy - 2), txt, font=f_val, fill=col)
-            lw = d.textlength(lbl, font=f_lbl)
-            d.text((W - PAD - lw, cy + 28), lbl, font=f_lbl, fill=C_MUTED)
+            if v > 0:   txt, col, lbl = fmt(v, sym), C_GREEN, "a receber"
+            elif v < 0: txt, col, lbl = fmt(v, sym), C_RED, "a pagar"
+            else:       txt, col, lbl = fmt(0, sym), C_MUTED, "quitado"
+            d.text((W - PAD - _md.textlength(txt, font=f_val), cy - 2), txt, font=f_val, fill=col)
+            d.text((W - PAD - _md.textlength(lbl, font=f_lbl), cy + 28), lbl, font=f_lbl, fill=C_MUTED)
             cy += 52
 
         cy += 10
+        # acerto
         d.text((PAD + 4, cy), "→ Quem transfere para quem:", font=f_txb, fill=C_HEAD)
         cy += 44
         if not tx:
-            d.text((PAD + 4, cy), "Tudo quitado.", font=f_tx, fill=C_MUTED)
-            cy += 46
+            d.text((PAD + 4, cy), "Tudo quitado.", font=f_tx, fill=C_MUTED); cy += 46
         for (frm, to, amt) in tx:
             d.text((PAD + 4, cy), frm, font=f_txb, fill=C_RED)
-            fw = d.textlength(frm, font=f_txb)
-            d.text((PAD + 4 + fw + 8, cy), "→", font=f_tx, fill=C_MUTED)
-            aw2 = d.textlength("→", font=f_tx)
-            d.text((PAD + 4 + fw + 8 + aw2 + 8, cy), to, font=f_txb, fill=C_GREEN)
+            fw = _md.textlength(frm, font=f_txb)
+            d.text((PAD + 12 + fw, cy), "→", font=f_tx, fill=C_MUTED)
+            aw2 = _md.textlength("→", font=f_tx)
+            d.text((PAD + 20 + fw + aw2, cy), to, font=f_txb, fill=C_GREEN)
             amt_s = fmt(amt, sym)
-            aw = d.textlength(amt_s, font=f_txb)
-            d.text((W - PAD - aw, cy), amt_s, font=f_txb, fill=C_HEAD)
+            d.text((W - PAD - _md.textlength(amt_s, font=f_txb), cy), amt_s, font=f_txb, fill=C_HEAD)
             cy += 46
 
-        y += card_h + 28
+        cy += 22
+        # histórico de compras
+        d.text((PAD + 4, cy), "Compras (histórico):", font=f_subh, fill=C_HEAD)
+        cy += 44
+        for e in ents:
+            dlines, mlines, valtxt, vw, eh = entry_layout(e, sym)
+            d.text((W - PAD - vw, cy), valtxt, font=f_entry, fill=C_TEXT)
+            for i, ln in enumerate(dlines):
+                d.text((PAD + 4, cy + i * 30), ln, font=f_entry, fill=C_TEXT)
+            my = cy + len(dlines) * 30 + 2
+            for i, ln in enumerate(mlines):
+                d.text((PAD + 4, my + i * 24), ln, font=f_small, fill=C_MUTED)
+            cy += eh
 
-    # rodapé
+        y += ch + 28
+
     d.text((PAD, y + 6),
            "Euro e Real contabilizados separadamente, sem câmbio.",
            font=f_foot, fill=C_MUTED)
