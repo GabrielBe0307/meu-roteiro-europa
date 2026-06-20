@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a4d7a">
+  <title>Divisão de Despesas — Viagem Europa</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --primary: #1a4d7a;
+      --primary-dark: #143a5c;
+      --secondary: #e8b923;
+      --accent: #c7956d;
+      --light: #f4f6f9;
+      --card: #ffffff;
+      --text: #1a1a1a;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --green: #1f9d55;
+      --green-bg: #e7f6ee;
+      --red: #d64545;
+      --red-bg: #fdeaea;
+      --euro: #1a4d7a;
+      --real: #1f9d55;
+      --radius: 14px;
+      --shadow: 0 4px 18px rgba(0,0,0,0.07);
+    }
+
+    html { -webkit-text-size-adjust: 100%; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--light);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 40px;
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    header {
+      background: linear-gradient(135deg, #1a4d7a 0%, #2980b9 100%);
+      color: #fff;
+      padding: 22px 18px 18px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    header h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: .2px; }
+    header p { font-size: .8rem; opacity: .9; margin-top: 3px; }
+
+    /* Currency tabs */
+    .tabs {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .tab {
+      flex: 1;
+      padding: 9px 6px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .tab.active { background: #fff; color: var(--primary); }
+
+    .wrap { padding: 16px 14px; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      color: var(--primary);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card h2 .emoji { font-size: 1.15rem; }
+
+    label.fld {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="number"], input[type="tel"] {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font-size: 1rem;
+      background: #fafbfc;
+      transition: border-color .15s;
+    }
+    input:focus { outline: none; border-color: var(--primary); background: #fff; }
+
+    .row { display: flex; gap: 10px; }
+    .row > div { flex: 1; }
+    .field { margin-bottom: 14px; }
+
+    /* currency choice in form */
+    .cur-choice { display: flex; gap: 8px; }
+    .cur-choice button {
+      flex: 1;
+      padding: 11px;
+      border: 1.5px solid var(--line);
+      background: #fafbfc;
+      border-radius: 10px;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .cur-choice button.sel { border-color: var(--primary); background: var(--primary); color: #fff; }
+
+    .people-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .chip {
+      padding: 10px 4px;
+      border: 1.5px solid var(--line);
+      background: #fafbfc;
+      border-radius: 10px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      color: var(--text);
+      transition: all .12s;
+      user-select: none;
+    }
+    .chip.on-pay { border-color: var(--secondary); background: #fff7e0; color: #8a6d00; }
+    .chip.on-part { border-color: var(--green); background: var(--green-bg); color: #14613a; }
+
+    .helper { font-size: .72rem; color: var(--muted); margin-top: 6px; }
+
+    .quick { display: flex; gap: 8px; margin-top: 8px; }
+    .quick button {
+      flex: 1;
+      padding: 6px;
+      font-size: .72rem;
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 4px;
+      box-shadow: 0 4px 12px rgba(26,77,122,0.3);
+    }
+    .btn-primary:active { transform: scale(.99); }
+
+    .total-pill {
+      display: inline-block;
+      background: var(--light);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-left: auto;
+    }
+
+    /* Settlement */
+    .settle-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 12px;
+      background: var(--light);
+      border-radius: 10px;
+      margin-bottom: 8px;
+      font-size: .92rem;
+    }
+    .settle-item:last-child { margin-bottom: 0; }
+    .settle-item .from { font-weight: 700; color: var(--red); }
+    .settle-item .to { font-weight: 700; color: var(--green); }
+    .settle-item .arrow { color: var(--muted); }
+    .settle-item .amt { margin-left: auto; font-weight: 800; color: var(--primary); white-space: nowrap; }
+
+    /* Balances */
+    .bal-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 4px;
+      border-bottom: 1px solid var(--line);
+    }
+    .bal-row:last-child { border-bottom: none; }
+    .bal-name { font-weight: 600; }
+    .bal-val { font-weight: 800; font-size: .95rem; }
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .zero { color: var(--muted); }
+    .bal-tag { font-size: .68rem; font-weight: 600; color: var(--muted); display:block; text-align:right; }
+
+    /* Entries */
+    .entry {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .entry-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .entry-desc { font-weight: 700; font-size: .98rem; }
+    .entry-meta { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+    .entry-amt { font-weight: 800; color: var(--primary); white-space: nowrap; font-size: 1rem; }
+    .entry-detail {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      display: grid;
+      gap: 5px;
+    }
+    .det-row { display: flex; justify-content: space-between; font-size: .82rem; }
+    .det-name { color: var(--text); }
+    .det-vals { display: flex; gap: 10px; }
+    .det-paid { color: #8a6d00; font-weight: 600; }
+    .det-owe { color: var(--red); font-weight: 600; }
+    .det-net { font-weight: 700; min-width: 64px; text-align: right; }
+    .btn-del {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--red);
+      background: #fff;
+      color: var(--red);
+      border-radius: 9px;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: .88rem;
+      padding: 24px 10px;
+    }
+    .empty .big { font-size: 2rem; display:block; margin-bottom: 8px; }
+
+    .sec-sub { font-size: .72rem; color: var(--muted); margin-bottom: 10px; margin-top: -6px; }
+
+    .footer-note { text-align:center; font-size:.7rem; color:var(--muted); padding: 6px 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>💶 Divisão de Despesas</h1>
+    <p>Viagem Europa — 6 pessoas</p>
+    <div class="tabs">
+      <button class="tab active" id="tab-EUR" onclick="setCurrency('EUR')">€ Euro</button>
+      <button class="tab" id="tab-BRL" onclick="setCurrency('BRL')">R$ Real</button>
+    </div>
+  </header>
+
+  <div class="wrap">
+
+    <!-- New expense form -->
+    <div class="card">
+      <h2><span class="emoji">➕</span> Novo lançamento</h2>
+
+      <div class="field">
+        <label class="fld">Descrição</label>
+        <input type="text" id="desc" placeholder="Ex.: Jantar em Roma, Táxi, Hotel...">
+      </div>
+
+      <div class="row field">
+        <div>
+          <label class="fld">Valor</label>
+          <input type="tel" inputmode="decimal" id="value" placeholder="0,00">
+        </div>
+        <div>
+          <label class="fld">Moeda</label>
+          <div class="cur-choice">
+            <button type="button" id="cur-EUR" class="sel" onclick="setFormCurrency('EUR')">€</button>
+            <button type="button" id="cur-BRL" onclick="setFormCurrency('BRL')">R$</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="fld">💳 Quem pagou?</label>
+        <div class="people-grid" id="payers"></div>
+        <div class="quick">
+          <button type="button" onclick="quickSet('payers', true)">Todos</button>
+          <button type="button" onclick="quickSet('payers', false)">Limpar</button>
+        </div>
+        <div class="helper">Se marcar mais de um, o valor pago é dividido igualmente entre eles.</div>
+      </div>
+
+      <div class="field">
+        <label class="fld">👥 Quem participa da divisão?</label>
+        <div class="people-grid" id="participants"></div>
+        <div class="quick">
+          <button type="button" onclick="quickSet('participants', true)">Todos</button>
+          <button type="button" onclick="quickSet('participants', false)">Limpar</button>
+        </div>
+        <div class="helper">O custo é rachado em partes iguais entre os marcados.</div>
+      </div>
+
+      <button class="btn-primary" onclick="addExpense()">Lançar pagamento</button>
+    </div>
+
+    <!-- Settlement -->
+    <div class="card">
+      <h2><span class="emoji">🤝</span> Acerto de contas <span class="total-pill" id="grand-total">—</span></h2>
+      <div class="sec-sub">Menor número de transferências para zerar tudo.</div>
+      <div id="settlement"></div>
+    </div>
+
+    <!-- Balances -->
+    <div class="card">
+      <h2><span class="emoji">⚖️</span> Saldo por pessoa</h2>
+      <div id="balances"></div>
+    </div>
+
+    <!-- Entries -->
+    <div class="card">
+      <h2><span class="emoji">🧾</span> Lançamentos</h2>
+      <div id="entries"></div>
+    </div>
+
+    <div class="footer-note">Os dados ficam salvos neste aparelho. €uro e R$eal são contabilizados separadamente.</div>
+  </div>
+
+  <script>
+    "use strict";
+
+    const PEOPLE = ["Gabriel", "Clara", "Aline", "Renan", "Fonte", "Rosana"];
+    const STORAGE_KEY = "divisao_despesas_v1";
+    const CUR = {
+      EUR: { symbol: "€", label: "Euro", locale: "pt-PT" },
+      BRL: { symbol: "R$", label: "Real", locale: "pt-BR" }
+    };
+
+    let state = loadState();           // { expenses: [...] }
+    let viewCurrency = "EUR";          // which currency the dashboard shows
+    let formCurrency = "EUR";          // selected currency in the form
+    let formPayers = new Set();
+    let formParticipants = new Set();
+
+    /* ---------- Persistence ---------- */
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.expenses)) return parsed;
+        }
+      } catch (e) { /* ignore */ }
+      return { expenses: [] };
+    }
+    function saveState() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+      catch (e) { alert("Não foi possível salvar os dados neste aparelho."); }
+    }
+
+    /* ---------- Money helpers (work in integer cents) ---------- */
+    function parseValueToCents(str) {
+      if (!str) return NaN;
+      // accept both comma and dot, strip currency symbols/spaces
+      let s = String(str).trim().replace(/[^\d.,-]/g, "");
+      // if both separators present, assume "." thousands and "," decimal
+      if (s.indexOf(",") > -1 && s.indexOf(".") > -1) {
+        s = s.replace(/\./g, "").replace(",", ".");
+      } else {
+        s = s.replace(",", ".");
+      }
+      const v = parseFloat(s);
+      if (isNaN(v)) return NaN;
+      return Math.round(v * 100);
+    }
+    function fmt(cents, cur) {
+      const sign = cents < 0 ? "-" : "";
+      const abs = Math.abs(cents) / 100;
+      const c = CUR[cur];
+      return sign + c.symbol + " " + abs.toLocaleString(c.locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    // split a total of cents into n equal parts, distributing leftover cents
+    function splitCents(totalCents, n) {
+      const base = Math.floor(totalCents / n);
+      let rem = totalCents - base * n;
+      const parts = [];
+      for (let i = 0; i < n; i++) parts.push(base + (i < rem ? 1 : 0));
+      return parts;
+    }
+
+    /* ---------- Build form UI ---------- */
+    function buildChips() {
+      const payersEl = document.getElementById("payers");
+      const partEl = document.getElementById("participants");
+      payersEl.innerHTML = "";
+      partEl.innerHTML = "";
+      PEOPLE.forEach(name => {
+        const p = document.createElement("div");
+        p.className = "chip" + (formPayers.has(name) ? " on-pay" : "");
+        p.textContent = name;
+        p.onclick = () => { toggle(formPayers, name); buildChips(); };
+        payersEl.appendChild(p);
+
+        const q = document.createElement("div");
+        q.className = "chip" + (formParticipants.has(name) ? " on-part" : "");
+        q.textContent = name;
+        q.onclick = () => { toggle(formParticipants, name); buildChips(); };
+        partEl.appendChild(q);
+      });
+    }
+    function toggle(set, name) { set.has(name) ? set.delete(name) : set.add(name); }
+    function quickSet(which, all) {
+      const set = which === "payers" ? formPayers : formParticipants;
+      set.clear();
+      if (all) PEOPLE.forEach(n => set.add(n));
+      buildChips();
+    }
+    function setFormCurrency(cur) {
+      formCurrency = cur;
+      document.getElementById("cur-EUR").classList.toggle("sel", cur === "EUR");
+      document.getElementById("cur-BRL").classList.toggle("sel", cur === "BRL");
+    }
+
+    /* ---------- Add / remove expense ---------- */
+    function addExpense() {
+      const desc = document.getElementById("desc").value.trim();
+      const cents = parseValueToCents(document.getElementById("value").value);
+
+      if (!desc) { alert("Informe uma descrição."); return; }
+      if (isNaN(cents) || cents <= 0) { alert("Informe um valor válido (ex.: 12,97)."); return; }
+      if (formPayers.size === 0) { alert("Marque quem pagou."); return; }
+      if (formParticipants.size === 0) { alert("Marque quem participa da divisão."); return; }
+
+      state.expenses.push({
+        id: Date.now() + "-" + Math.random().toString(36).slice(2, 7),
+        desc,
+        cents,
+        currency: formCurrency,
+        payers: [...formPayers],
+        participants: [...formParticipants],
+        ts: Date.now()
+      });
+      saveState();
+
+      // reset form (keep currency selection)
+      document.getElementById("desc").value = "";
+      document.getElementById("value").value = "";
+      formPayers.clear();
+      formParticipants.clear();
+      buildChips();
+      viewCurrency = formCurrency;
+      syncTabs();
+      render();
+      window.scrollTo({ top: document.querySelector(".card:nth-of-type(2)").offsetTop - 70, behavior: "smooth" });
+    }
+
+    function removeExpense(id) {
+      if (!confirm("Remover este lançamento?")) return;
+      state.expenses = state.expenses.filter(e => e.id !== id);
+      saveState();
+      render();
+    }
+
+    /* ---------- Calculations (per currency, in cents) ---------- */
+    // returns { name: {paid, owed} } in cents for one expense
+    function expenseBreakdown(exp) {
+      const res = {};
+      PEOPLE.forEach(n => res[n] = { paid: 0, owed: 0 });
+      const paidParts = splitCents(exp.cents, exp.payers.length);
+      exp.payers.forEach((n, i) => { res[n].paid += paidParts[i]; });
+      const oweParts = splitCents(exp.cents, exp.participants.length);
+      exp.participants.forEach((n, i) => { res[n].owed += oweParts[i]; });
+      return res;
+    }
+
+    function computeBalances(currency) {
+      const bal = {};
+      PEOPLE.forEach(n => bal[n] = 0);
+      state.expenses.filter(e => e.currency === currency).forEach(exp => {
+        const b = expenseBreakdown(exp);
+        PEOPLE.forEach(n => { bal[n] += b[n].paid - b[n].owed; });
+      });
+      return bal; // positive = a receber, negative = a pagar
+    }
+
+    // greedy minimal transfers
+    function settle(bal) {
+      const creditors = [];
+      const debtors = [];
+      PEOPLE.forEach(n => {
+        if (bal[n] > 0) creditors.push({ name: n, amt: bal[n] });
+        else if (bal[n] < 0) debtors.push({ name: n, amt: -bal[n] });
+      });
+      creditors.sort((a, b) => b.amt - a.amt);
+      debtors.sort((a, b) => b.amt - a.amt);
+      const tx = [];
+      let i = 0, j = 0;
+      while (i < debtors.length && j < creditors.length) {
+        const pay = Math.min(debtors[i].amt, creditors[j].amt);
+        if (pay > 0) tx.push({ from: debtors[i].name, to: creditors[j].name, amt: pay });
+        debtors[i].amt -= pay;
+        creditors[j].amt -= pay;
+        if (debtors[i].amt === 0) i++;
+        if (creditors[j].amt === 0) j++;
+      }
+      return tx;
+    }
+
+    function currencyTotal(currency) {
+      return state.expenses.filter(e => e.currency === currency)
+        .reduce((s, e) => s + e.cents, 0);
+    }
+
+    /* ---------- Rendering ---------- */
+    function setCurrency(cur) { viewCurrency = cur; syncTabs(); render(); }
+    function syncTabs() {
+      document.getElementById("tab-EUR").classList.toggle("active", viewCurrency === "EUR");
+      document.getElementById("tab-BRL").classList.toggle("active", viewCurrency === "BRL");
+    }
+
+    function render() {
+      const cur = viewCurrency;
+      const expenses = state.expenses.filter(e => e.currency === cur);
+
+      // total
+      document.getElementById("grand-total").textContent = fmt(currencyTotal(cur), cur);
+
+      // settlement
+      const bal = computeBalances(cur);
+      const tx = settle(bal);
+      const settleEl = document.getElementById("settlement");
+      if (expenses.length === 0) {
+        settleEl.innerHTML = emptyBox("Nenhum lançamento em " + CUR[cur].label + ".");
+      } else if (tx.length === 0) {
+        settleEl.innerHTML = '<div class="settle-item">✅ Tudo certo — ninguém deve nada.</div>';
+      } else {
+        settleEl.innerHTML = tx.map(t =>
+          `<div class="settle-item">
+             <span class="from">${t.from}</span>
+             <span class="arrow">→</span>
+             <span class="to">${t.to}</span>
+             <span class="amt">${fmt(t.amt, cur)}</span>
+           </div>`
+        ).join("");
+      }
+
+      // balances
+      const balEl = document.getElementById("balances");
+      if (expenses.length === 0) {
+        balEl.innerHTML = emptyBox("Sem saldos ainda.");
+      } else {
+        balEl.innerHTML = PEOPLE.map(n => {
+          const v = bal[n];
+          const cls = v > 0 ? "pos" : (v < 0 ? "neg" : "zero");
+          const tag = v > 0 ? "a receber" : (v < 0 ? "a pagar" : "quitado");
+          return `<div class="bal-row">
+              <span class="bal-name">${n}</span>
+              <span>
+                <span class="bal-val ${cls}">${fmt(v, cur)}</span>
+                <span class="bal-tag">${tag}</span>
+              </span>
+            </div>`;
+        }).join("");
+      }
+
+      // entries
+      const entriesEl = document.getElementById("entries");
+      if (expenses.length === 0) {
+        entriesEl.innerHTML = emptyBox("Nenhum lançamento ainda.", "🧾");
+      } else {
+        const sorted = [...expenses].sort((a, b) => b.ts - a.ts);
+        entriesEl.innerHTML = sorted.map(exp => {
+          const b = expenseBreakdown(exp);
+          const involved = PEOPLE.filter(n => b[n].paid !== 0 || b[n].owed !== 0);
+          const detail = involved.map(n => {
+            const net = b[n].paid - b[n].owed;
+            const netCls = net > 0 ? "pos" : (net < 0 ? "neg" : "zero");
+            const paidStr = b[n].paid ? `<span class="det-paid">pagou ${fmt(b[n].paid, exp.currency)}</span>` : "";
+            const oweStr = b[n].owed ? `<span class="det-owe">deve ${fmt(b[n].owed, exp.currency)}</span>` : "";
+            return `<div class="det-row">
+                <span class="det-name">${n}</span>
+                <span class="det-vals">
+                  ${paidStr}${oweStr}
+                  <span class="det-net ${netCls}">${net > 0 ? "+" : ""}${fmt(net, exp.currency)}</span>
+                </span>
+              </div>`;
+          }).join("");
+          const date = new Date(exp.ts).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+          return `<div class="entry">
+              <div class="entry-head">
+                <div>
+                  <div class="entry-desc">${escapeHtml(exp.desc)}</div>
+                  <div class="entry-meta">${date} · pago por ${exp.payers.join(", ")}</div>
+                </div>
+                <div class="entry-amt">${fmt(exp.cents, exp.currency)}</div>
+              </div>
+              <div class="entry-detail">${detail}</div>
+              <button class="btn-del" onclick="removeExpense('${exp.id}')">Remover lançamento</button>
+            </div>`;
+        }).join("");
+      }
+    }
+
+    function emptyBox(msg, big) {
+      return `<div class="empty">${big ? `<span class="big">${big}</span>` : ""}${msg}</div>`;
+    }
+    function escapeHtml(s) {
+      return s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+    }
+
+    /* ---------- Init ---------- */
+    buildChips();
+    setFormCurrency("EUR");
+    syncTabs();
+    render();
+  </script>
+</body>
+</html>
