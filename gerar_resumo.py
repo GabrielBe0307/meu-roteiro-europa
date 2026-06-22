@@ -151,7 +151,10 @@ def entry_layout(e, sym):
     d = e.get("data", "")
     datestr = (d[8:10] + "/" + d[5:7] + "/" + d[0:4]) if len(d) >= 10 else ""
     dw = (_md.textlength(datestr, font=f_date) + 14) if datestr else 0
-    meta = "Pagou: " + ", ".join(e["pagou"]) + "  ·  Dividiu: " + ", ".join(e["dividir"])
+    share = fmt(round(e["cents"] / len(e["dividir"])), sym)
+    meta = ("Pagou: " + ", ".join(e["pagou"]) +
+            "  ·  Dividiu: " + ", ".join(e["dividir"]) +
+            "  ·  ÷" + str(len(e["dividir"])) + " = " + share + "/pessoa")
     mlines = wrap(meta, f_small, CONTENT_W - dw, CONTENT_W)
     h = len(dlines) * 30 + len(mlines) * 24 + 18
     return dlines, mlines, valtxt, vw, datestr, dw, h
@@ -229,7 +232,7 @@ def draw_image(exps):
 
         cy += 10
         # acerto
-        d.text((PAD + 4, cy), "→ Quem transfere para quem:", font=f_txb, fill=C_HEAD)
+        d.text((PAD + 4, cy), "→ Passar a régua (quem paga a quem):", font=f_txb, fill=C_HEAD)
         cy += 44
         if not tx:
             d.text((PAD + 4, cy), "Tudo quitado.", font=f_tx, fill=C_MUTED); cy += 46
