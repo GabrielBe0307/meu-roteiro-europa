@@ -55,7 +55,8 @@ def load_expenses():
         if cents is None or cents <= 0 or not pagou or not dividir:
             continue
         exps.append({"desc": e.get("desc", ""), "cents": cents, "moeda": moeda,
-                     "pagou": pagou, "dividir": dividir, "data": e.get("data", "")})
+                     "pagou": pagou, "dividir": dividir, "data": e.get("data", ""),
+                     "tipo": e.get("tipo", "compra")})
     return exps
 
 def split_cents(total, n):
@@ -69,12 +70,15 @@ def fmt(cents, sym):
     return ("-" if neg else "") + sym + " " + s
 
 def compute(exps, moeda):
+    # paid/owed (e portanto o saldo) incluem compras E acertos;
+    # o "total gasto" considera apenas compras (acertos só movem dinheiro).
     paid = {n: 0 for n in PEOPLE}
     owed = {n: 0 for n in PEOPLE}
     total = 0
     for e in exps:
         if e["moeda"] != moeda: continue
-        total += e["cents"]
+        if e["tipo"] != "acerto":
+            total += e["cents"]
         for n, c in zip(e["pagou"], split_cents(e["cents"], len(e["pagou"]))):
             paid[n] += c
         for n, c in zip(e["dividir"], split_cents(e["cents"], len(e["dividir"]))):
@@ -151,15 +155,18 @@ def entry_layout(e, sym):
     d = e.get("data", "")
     datestr = (d[8:10] + "/" + d[5:7] + "/" + d[0:4]) if len(d) >= 10 else ""
     dw = (_md.textlength(datestr, font=f_date) + 14) if datestr else 0
-    share = fmt(round(e["cents"] / len(e["dividir"])), sym)
-    meta = ("Pagou: " + ", ".join(e["pagou"]) +
-            "  ·  Dividiu: " + ", ".join(e["dividir"]) +
-            "  ·  ÷" + str(len(e["dividir"])) + " = " + share + "/pessoa")
+    if e["tipo"] == "acerto":
+        meta = e["pagou"][0] + " pagou " + e["dividir"][0] + "  ·  dívida quitada ✓"
+    else:
+        share = fmt(round(e["cents"] / len(e["dividir"])), sym)
+        meta = ("Pagou: " + ", ".join(e["pagou"]) +
+                "  ·  Dividiu: " + ", ".join(e["dividir"]) +
+                "  ·  ÷" + str(len(e["dividir"])) + " = " + share + "/pessoa")
     mlines = wrap(meta, f_small, CONTENT_W - dw, CONTENT_W)
     h = len(dlines) * 30 + len(mlines) * 24 + 18
     return dlines, mlines, valtxt, vw, datestr, dw, h
 
-def card_height(rows, tx, entries, sym):
+def card_height(rows, tx, compras, acertos, sym):
     h = 24            # top pad
     h += 64           # section title
     h += 14           # after line
@@ -168,9 +175,13 @@ def card_height(rows, tx, entries, sym):
     h += 44           # settlement title
     h += max(1, len(tx)) * 46
     h += 22           # gap
-    h += 44           # entries title
-    for e in entries:
+    h += 44           # compras title
+    for e in compras:
         h += entry_layout(e, sym)[6]
+    if acertos:
+        h += 20 + 44  # gap + acertos title
+        for e in acertos:
+            h += entry_layout(e, sym)[6]
     h += 24           # bottom pad
     return h
 
@@ -178,16 +189,20 @@ def draw_image(exps):
     blocks = []
     for m in ["EUR", "BRL"]:
         total, paid, owed, bal = compute(exps, m)
-        if total > 0:
-            ents = sorted([e for e in exps if e["moeda"] == m],
-                          key=lambda e: (e.get("data", "9999"),))
-            rows = [n for n in PEOPLE if paid[n] != 0 or owed[n] != 0]
-            blocks.append((m, total, paid, owed, bal, settle(bal), rows, ents))
+        mexps = [e for e in exps if e["moeda"] == m]
+        if not mexps:
+            continue
+        compras = sorted([e for e in mexps if e["tipo"] != "acerto"],
+                         key=lambda e: (e.get("data", "9999"),))
+        acertos = sorted([e for e in mexps if e["tipo"] == "acerto"],
+                         key=lambda e: (e.get("data", "9999"),))
+        rows = [n for n in PEOPLE if paid[n] != 0 or owed[n] != 0]
+        blocks.append((m, total, paid, owed, bal, settle(bal), rows, compras, acertos))
 
     HEAD_H = 188
     total_h = HEAD_H + 30
-    for (m, total, paid, owed, bal, tx, rows, ents) in blocks:
-        total_h += card_height(rows, tx, ents, CUR[m]["sym"]) + 28
+    for (m, total, paid, owed, bal, tx, rows, compras, acertos) in blocks:
+        total_h += card_height(rows, tx, compras, acertos, CUR[m]["sym"]) + 28
     total_h += 90
 
     img = Image.new("RGB", (W, total_h), C_BG)
@@ -202,9 +217,9 @@ def draw_image(exps):
     d.text((PAD, 132), upd, font=f_upd, fill=(150, 190, 225))
     y = HEAD_H + 30
 
-    for (m, total, paid, owed, bal, tx, rows, ents) in blocks:
+    for (m, total, paid, owed, bal, tx, rows, compras, acertos) in blocks:
         sym = CUR[m]["sym"]
-        ch = card_height(rows, tx, ents, sym)
+        ch = card_height(rows, tx, compras, acertos, sym)
         d.rounded_rectangle([PAD - 14, y, W - (PAD - 14), y + ch], radius=18, fill=C_CARD)
         cy = y + 24
 
@@ -246,22 +261,34 @@ def draw_image(exps):
             d.text((W - PAD - _md.textlength(amt_s, font=f_txb), cy), amt_s, font=f_txb, fill=C_HEAD)
             cy += 46
 
+        def draw_entries(items, start_y, name_color):
+            yy = start_y
+            for e in items:
+                dlines, mlines, valtxt, vw, datestr, dw, eh = entry_layout(e, sym)
+                d.text((W - PAD - vw, yy), valtxt, font=f_entry, fill=name_color)
+                for i, ln in enumerate(dlines):
+                    d.text((PAD + 4, yy + i * 30), ln, font=f_entry, fill=name_color)
+                my = yy + len(dlines) * 30 + 2
+                if datestr:
+                    d.text((PAD + 4, my), datestr, font=f_date, fill=accent)
+                for i, ln in enumerate(mlines):
+                    x = PAD + 4 + (dw if i == 0 else 0)
+                    d.text((x, my + i * 24), ln, font=f_small, fill=C_MUTED)
+                yy += eh
+            return yy
+
         cy += 22
         # histórico de compras
         d.text((PAD + 4, cy), "Compras (histórico):", font=f_subh, fill=C_HEAD)
         cy += 44
-        for e in ents:
-            dlines, mlines, valtxt, vw, datestr, dw, eh = entry_layout(e, sym)
-            d.text((W - PAD - vw, cy), valtxt, font=f_entry, fill=C_TEXT)
-            for i, ln in enumerate(dlines):
-                d.text((PAD + 4, cy + i * 30), ln, font=f_entry, fill=C_TEXT)
-            my = cy + len(dlines) * 30 + 2
-            if datestr:
-                d.text((PAD + 4, my), datestr, font=f_date, fill=accent)
-            for i, ln in enumerate(mlines):
-                x = PAD + 4 + (dw if i == 0 else 0)
-                d.text((x, my + i * 24), ln, font=f_small, fill=C_MUTED)
-            cy += eh
+        cy = draw_entries(compras, cy, C_TEXT)
+
+        # acertos / pagamentos já feitos
+        if acertos:
+            cy += 20
+            d.text((PAD + 4, cy), "Acertos já pagos:", font=f_subh, fill=C_GREEN)
+            cy += 44
+            cy = draw_entries(acertos, cy, C_GREEN)
 
         y += ch + 28
 

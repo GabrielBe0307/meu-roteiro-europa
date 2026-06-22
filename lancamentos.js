@@ -35,4 +35,10 @@ window.LANCAMENTOS = [
   { desc: "Croissant no Rock in Rio", valor: "7,00", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Clara"], data: "2026-06-19" },
   { desc: "Uber para o aeroporto de Lisboa", valor: "17,98", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-20" },
   { desc: "Uber para o aeroporto de Lisboa", valor: "16,97", moeda: "EUR", pagou: ["Aline"], dividir: TODOS, data: "2026-06-20" },
+
+  // ----- Acertos / pagamentos (não são compras; quitam dívidas) -----
+  { desc: "Acerto — Clara pagou Gabriel", valor: "66,05", moeda: "EUR", pagou: ["Clara"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
+  { desc: "Acerto — Clara pagou Gabriel", valor: "66,77", moeda: "BRL", pagou: ["Clara"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
+  { desc: "Acerto — Fonte pagou Gabriel", valor: "27,76", moeda: "EUR", pagou: ["Fonte"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
+  { desc: "Acerto — Rosana pagou Gabriel", valor: "27,74", moeda: "EUR", pagou: ["Rosana"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
 ];
