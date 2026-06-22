@@ -34,4 +34,5 @@ window.LANCAMENTOS = [
   { desc: "Trem em Roma", valor: "75,00", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-20" },
   { desc: "Croissant no Rock in Rio", valor: "7,00", moeda: "EUR", pagou: ["Gabriel"], dividir: ["Clara"], data: "2026-06-19" },
   { desc: "Uber para o aeroporto de Lisboa", valor: "17,98", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-20" },
+  { desc: "Uber para o aeroporto de Lisboa", valor: "16,97", moeda: "EUR", pagou: ["Aline"], dividir: TODOS, data: "2026-06-20" },
 ];
