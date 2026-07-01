@@ -36,9 +36,32 @@ window.LANCAMENTOS = [
   { desc: "Uber para o aeroporto de Lisboa", valor: "17,98", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS, data: "2026-06-20" },
   { desc: "Uber para o aeroporto de Lisboa", valor: "16,97", moeda: "EUR", pagou: ["Aline"], dividir: TODOS, data: "2026-06-20" },
 
+  // ----- Lote do encontro de contas final -----
+  // Aline pagou
+  { desc: "Van Castellammare–Vico Equense (ida)", valor: "9,00", moeda: "EUR", pagou: ["Aline"], dividir: ["Fonte", "Gabriel", "Rosana"] },
+  { desc: "Restaurante do hotel (pizza)", valor: "68,00", moeda: "EUR", pagou: ["Aline"], dividir: TODOS },
+  { desc: "Táxi Capri (ida e volta)", valor: "60,00", moeda: "EUR", pagou: ["Aline"], dividir: TODOS },
+  { desc: "Uber Sorrento → hotel", valor: "50,00", moeda: "EUR", pagou: ["Aline"], dividir: ["Gabriel", "Clara", "Aline", "Fonte", "Rosana"] },
+  { desc: "Uber aeroporto Fiumicino (Roma)", valor: "37,00", moeda: "EUR", pagou: ["Aline"], dividir: TODOS },
+  // Clara pagou
+  { desc: "Van Castellammare", valor: "12,00", moeda: "EUR", pagou: ["Clara"], dividir: ["Renan", "Gabriel", "Fonte", "Rosana"] },
+  // Clara e Gabriel pagaram
+  { desc: "Vinho", valor: "25,00", moeda: "EUR", pagou: ["Clara", "Gabriel"], dividir: ["Aline", "Renan", "Gabriel", "Clara"] },
+  // Renan pagou
+  { desc: "Taxa do Booking", valor: "21,35", moeda: "EUR", pagou: ["Renan"], dividir: TODOS },
+  { desc: "Passeio Coliseu", valor: "1170,71", moeda: "BRL", pagou: ["Renan"], dividir: ["Rosana", "Fonte", "Renan", "Aline"] },
+  { desc: "Hotel (Airbnb aeroporto)", valor: "1658,16", moeda: "BRL", pagou: ["Renan"], dividir: TODOS },
+  // Fonte pagou
+  { desc: "Táxi Capri (ida e volta)", valor: "60,00", moeda: "EUR", pagou: ["Fonte"], dividir: TODOS },
+  // Gabriel pagou
+  { desc: "Marinheiro (barqueiro)", valor: "40,00", moeda: "EUR", pagou: ["Gabriel"], dividir: TODOS },
+
   // ----- Acertos / pagamentos (não são compras; quitam dívidas) -----
   { desc: "Acerto — Clara pagou Gabriel", valor: "66,05", moeda: "EUR", pagou: ["Clara"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
   { desc: "Acerto — Clara pagou Gabriel", valor: "66,77", moeda: "BRL", pagou: ["Clara"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
   { desc: "Acerto — Fonte pagou Gabriel", valor: "27,76", moeda: "EUR", pagou: ["Fonte"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
   { desc: "Acerto — Rosana pagou Gabriel", valor: "27,74", moeda: "EUR", pagou: ["Rosana"], dividir: ["Gabriel"], data: "2026-06-20", tipo: "acerto" },
+  // Uber Sorrento: Fonte e Rosana já pagaram a parte (€10 cada) à Aline
+  { desc: "Acerto — Fonte pagou Aline (Uber Sorrento)", valor: "10,00", moeda: "EUR", pagou: ["Fonte"], dividir: ["Aline"], tipo: "acerto" },
+  { desc: "Acerto — Rosana pagou Aline (Uber Sorrento)", valor: "10,00", moeda: "EUR", pagou: ["Rosana"], dividir: ["Aline"], tipo: "acerto" },
 ];
