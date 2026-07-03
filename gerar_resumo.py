@@ -86,6 +86,22 @@ def compute(exps, moeda):
     bal = {n: paid[n] - owed[n] for n in PEOPLE}
     return total, paid, owed, bal
 
+RATE = 5.95  # 1 € = R$ 5,95
+
+def eur_to_brl_cents(eur_cents):
+    return round(eur_cents * RATE)
+
+def combined_balances(eur_bal, brl_bal):
+    # converte o saldo em euro para reais e soma ao saldo em real;
+    # ajusta 1-2 centavos de arredondamento para a soma fechar em zero.
+    conv = {n: eur_to_brl_cents(eur_bal[n]) for n in PEOPLE}
+    residual = -sum(conv.values())
+    if residual != 0:
+        alvo = max(PEOPLE, key=lambda n: abs(conv[n]))
+        conv[alvo] += residual
+    comb = {n: brl_bal[n] + conv[n] for n in PEOPLE}
+    return comb, conv
+
 def settle(bal):
     cr = sorted([{"name": n, "amt": bal[n]} for n in PEOPLE if bal[n] > 0], key=lambda x: -x["amt"])
     de = sorted([{"name": n, "amt": -bal[n]} for n in PEOPLE if bal[n] < 0], key=lambda x: -x["amt"])
@@ -199,10 +215,21 @@ def draw_image(exps):
         rows = [n for n in PEOPLE if paid[n] != 0 or owed[n] != 0]
         blocks.append((m, total, paid, owed, bal, settle(bal), rows, compras, acertos))
 
+    # ----- acumulado (tudo em R$) -----
+    eur_total, _, _, eur_bal = compute(exps, "EUR")
+    brl_total, _, _, brl_bal = compute(exps, "BRL")
+    comb, conv = combined_balances(eur_bal, brl_bal)
+    acum_total = brl_total + eur_to_brl_cents(eur_total)
+    acum_tx = settle(comb)
+
+    def acum_card_height(tx):
+        return 24 + 64 + 36 + 14 + len(PEOPLE) * 58 + 10 + 44 + max(1, len(tx)) * 46 + 24
+
     HEAD_H = 188
     total_h = HEAD_H + 30
     for (m, total, paid, owed, bal, tx, rows, compras, acertos) in blocks:
         total_h += card_height(rows, tx, compras, acertos, CUR[m]["sym"]) + 28
+    total_h += acum_card_height(acum_tx) + 28
     total_h += 90
 
     img = Image.new("RGB", (W, total_h), C_BG)
@@ -211,7 +238,7 @@ def draw_image(exps):
     # header
     d.rectangle([0, 0, W, HEAD_H], fill=C_HEAD)
     d.text((PAD, 34), "Resumo de Despesas", font=f_title, fill=C_WHITE)
-    d.text((PAD, 88), "Viagem Europa · 6 pessoas · € e R$ separados",
+    d.text((PAD, 88), "Viagem Europa · 6 pessoas · acumulado a R$ 5,95/€",
            font=f_sub, fill=(210, 224, 238))
     upd = "Atualizado em " + datetime.now(TZ).strftime("%d/%m/%Y às %H:%M")
     d.text((PAD, 132), upd, font=f_upd, fill=(150, 190, 225))
@@ -292,8 +319,52 @@ def draw_image(exps):
 
         y += ch + 28
 
+    # ===== card ACUMULADO (tudo em R$) =====
+    C_GOLD = (176, 122, 20)
+    ach = acum_card_height(acum_tx)
+    d.rounded_rectangle([PAD - 14, y, W - (PAD - 14), y + ach], radius=18, fill=C_CARD)
+    cy = y + 24
+    d.rounded_rectangle([PAD, cy + 4, PAD + 10, cy + 40], radius=5, fill=C_GOLD)
+    d.text((PAD + 26, cy), "ACUMULADO (R$)", font=f_sec, fill=C_GOLD)
+    at = fmt(acum_total, "R$")
+    d.text((W - PAD - _md.textlength(at, font=f_sectot), cy + 6), at, font=f_sectot, fill=C_TEXT)
+    cy += 56
+    d.text((PAD + 4, cy), "Euro convertido a R$ 5,95/€ + Real, somados.", font=f_small, fill=C_MUTED)
+    cy += 30
+    d.line([PAD, cy, W - PAD, cy], fill=C_LINE, width=2)
+    cy += 14
+
+    for n in PEOPLE:
+        v = comb[n]
+        d.text((PAD + 4, cy), n, font=f_name, fill=C_TEXT)
+        brk = fmt(brl_bal[n], "R$") + " (real)  +  " + fmt(conv[n], "R$") + " (€ conv.)"
+        d.text((PAD + 4, cy + 30), brk, font=f_small, fill=C_MUTED)
+        if v > 0:   txt, col, lbl = fmt(v, "R$"), C_GREEN, "a receber"
+        elif v < 0: txt, col, lbl = fmt(v, "R$"), C_RED, "a pagar"
+        else:       txt, col, lbl = fmt(0, "R$"), C_MUTED, "quitado"
+        d.text((W - PAD - _md.textlength(txt, font=f_val), cy - 2), txt, font=f_val, fill=col)
+        d.text((W - PAD - _md.textlength(lbl, font=f_lbl), cy + 30), lbl, font=f_lbl, fill=C_MUTED)
+        cy += 58
+
+    cy += 10
+    d.text((PAD + 4, cy), "→ Passar a régua FINAL (quem paga a quem):", font=f_txb, fill=C_GOLD)
+    cy += 44
+    if not acum_tx:
+        d.text((PAD + 4, cy), "Tudo quitado.", font=f_tx, fill=C_MUTED); cy += 46
+    for (frm, to, amt) in acum_tx:
+        d.text((PAD + 4, cy), frm, font=f_txb, fill=C_RED)
+        fw = _md.textlength(frm, font=f_txb)
+        d.text((PAD + 12 + fw, cy), "→", font=f_tx, fill=C_MUTED)
+        aw2 = _md.textlength("→", font=f_tx)
+        d.text((PAD + 20 + fw + aw2, cy), to, font=f_txb, fill=C_GREEN)
+        amt_s = fmt(amt, "R$")
+        d.text((W - PAD - _md.textlength(amt_s, font=f_txb), cy), amt_s, font=f_txb, fill=C_GOLD)
+        cy += 46
+
+    y += ach + 28
+
     d.text((PAD, y + 6),
-           "Euro e Real contabilizados separadamente, sem câmbio.",
+           "€ e R$ mostrados separados; o acumulado converte € a R$ 5,95 e soma.",
            font=f_foot, fill=C_MUTED)
 
     img.save(os.path.join(HERE, "resumo.png"))
