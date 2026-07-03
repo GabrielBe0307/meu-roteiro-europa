@@ -40,6 +40,7 @@ window.LANCAMENTOS = [
 
   // ----- Aline pagou (Real) -----
   { desc: "Uber do Airbnb para o aeroporto", valor: "290,31", moeda: "BRL", pagou: ["Aline"], dividir: TODOS },
+  { desc: "Jantar salgado", valor: "403,00", moeda: "BRL", pagou: ["Aline"], dividir: ["Clara", "Renan", "Aline", "Gabriel"] },
 
   // ----- Gabriel pagou (Real) -----
   { desc: "Uber de volta de Guarulhos", valor: "271,18", moeda: "BRL", pagou: ["Gabriel"], dividir: ["Gabriel", "Fonte", "Clara", "Rosana"] },
