@@ -186,9 +186,10 @@ def card_height(rows, tx, compras, acertos, sym):
     h = 24            # top pad
     h += 64           # section title
     h += 14           # after line
-    h += len(rows) * 52
+    h += len(rows) * 60
     h += 10
     h += 44           # settlement title
+    h += 30           # explicação da lógica
     h += max(1, len(tx)) * 46
     h += 22           # gap
     h += 44           # compras title
@@ -223,7 +224,7 @@ def draw_image(exps):
     acum_tx = settle(comb)
 
     def acum_card_height(tx):
-        return 24 + 64 + 36 + 14 + len(PEOPLE) * 58 + 10 + 44 + max(1, len(tx)) * 46 + 24
+        return 24 + 64 + 36 + 14 + len(PEOPLE) * 58 + 10 + 44 + 34 + max(1, len(tx)) * 46 + 24
 
     HEAD_H = 188
     total_h = HEAD_H + 30
@@ -261,21 +262,26 @@ def draw_image(exps):
         d.line([PAD, cy, W - PAD, cy], fill=C_LINE, width=2)
         cy += 14
 
-        # saldos
+        # saldos (com o porquê: pagou vs cota)
         for n in rows:
             v = bal[n]
             d.text((PAD + 4, cy), n, font=f_name, fill=C_TEXT)
+            brk = "pagou " + fmt(paid[n], sym) + "  −  cota " + fmt(owed[n], sym)
+            d.text((PAD + 4, cy + 32), brk, font=f_small, fill=C_MUTED)
             if v > 0:   txt, col, lbl = fmt(v, sym), C_GREEN, "a receber"
             elif v < 0: txt, col, lbl = fmt(v, sym), C_RED, "a pagar"
             else:       txt, col, lbl = fmt(0, sym), C_MUTED, "quitado"
-            d.text((W - PAD - _md.textlength(txt, font=f_val), cy - 2), txt, font=f_val, fill=col)
-            d.text((W - PAD - _md.textlength(lbl, font=f_lbl), cy + 28), lbl, font=f_lbl, fill=C_MUTED)
-            cy += 52
+            d.text((W - PAD - _md.textlength(txt, font=f_val), cy), txt, font=f_val, fill=col)
+            d.text((W - PAD - _md.textlength(lbl, font=f_lbl), cy + 32), lbl, font=f_lbl, fill=C_MUTED)
+            cy += 60
 
         cy += 10
         # acerto
         d.text((PAD + 4, cy), "→ Passar a régua (quem paga a quem):", font=f_txb, fill=C_HEAD)
-        cy += 44
+        cy += 40
+        d.text((PAD + 4, cy), "Quem tem saldo negativo paga quem tem positivo, até zerar.",
+               font=f_small, fill=C_MUTED)
+        cy += 34
         if not tx:
             d.text((PAD + 4, cy), "Tudo quitado.", font=f_tx, fill=C_MUTED); cy += 46
         for (frm, to, amt) in tx:
@@ -348,7 +354,10 @@ def draw_image(exps):
 
     cy += 10
     d.text((PAD + 4, cy), "→ Passar a régua FINAL (quem paga a quem):", font=f_txb, fill=C_GOLD)
-    cy += 44
+    cy += 40
+    d.text((PAD + 4, cy), "Saldo = tudo que a pessoa pagou menos suas cotas (€ já convertido).",
+           font=f_small, fill=C_MUTED)
+    cy += 34
     if not acum_tx:
         d.text((PAD + 4, cy), "Tudo quitado.", font=f_tx, fill=C_MUTED); cy += 46
     for (frm, to, amt) in acum_tx:
