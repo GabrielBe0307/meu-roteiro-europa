@@ -182,11 +182,35 @@ def entry_layout(e, sym):
     h = len(dlines) * 30 + len(mlines) * 24 + 18
     return dlines, mlines, valtxt, vw, datestr, dw, h
 
-def card_height(rows, tx, compras, acertos, sym):
+def num(c):  # número sem símbolo (para as cotas)
+    return f"{c/100:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def shorten(desc, maxlen=17):
+    d = desc.split(" (")[0].strip()          # tira o parêntese
+    return d if len(d) <= maxlen else d[:maxlen - 1] + "…"
+
+def balance_row_lines(n, paid, owed, compras, sym):
+    # monta o texto "pagou X · cota Y = item(a) + item(b) + ..."
+    itens = []
+    for e in compras:
+        if n in e["dividir"]:
+            parts = split_cents(e["cents"], len(e["dividir"]))
+            share = parts[e["dividir"].index(n)]
+            itens.append(shorten(e["desc"]) + " " + num(share))
+    head = "pagou " + fmt(paid, sym) + "  ·  cota " + fmt(owed, sym)
+    texto = head + " = " + " + ".join(itens) if itens else head
+    lines = wrap(texto, f_small, CONTENT_W)
+    return lines
+
+def balance_row_height(n, paid, owed, compras, sym):
+    return 32 + len(balance_row_lines(n, paid, owed, compras, sym)) * 24 + 16
+
+def card_height(rows, tx, compras, acertos, sym, paid, owed):
     h = 24            # top pad
     h += 64           # section title
     h += 14           # after line
-    h += len(rows) * 60
+    for n in rows:
+        h += balance_row_height(n, paid[n], owed[n], compras, sym)
     h += 10
     h += 44           # settlement title
     h += 30           # explicação da lógica
@@ -229,7 +253,7 @@ def draw_image(exps):
     HEAD_H = 188
     total_h = HEAD_H + 30
     for (m, total, paid, owed, bal, tx, rows, compras, acertos) in blocks:
-        total_h += card_height(rows, tx, compras, acertos, CUR[m]["sym"]) + 28
+        total_h += card_height(rows, tx, compras, acertos, CUR[m]["sym"], paid, owed) + 28
     total_h += acum_card_height(acum_tx) + 28
     total_h += 90
 
@@ -247,7 +271,7 @@ def draw_image(exps):
 
     for (m, total, paid, owed, bal, tx, rows, compras, acertos) in blocks:
         sym = CUR[m]["sym"]
-        ch = card_height(rows, tx, compras, acertos, sym)
+        ch = card_height(rows, tx, compras, acertos, sym, paid, owed)
         d.rounded_rectangle([PAD - 14, y, W - (PAD - 14), y + ch], radius=18, fill=C_CARD)
         cy = y + 24
 
@@ -262,18 +286,21 @@ def draw_image(exps):
         d.line([PAD, cy, W - PAD, cy], fill=C_LINE, width=2)
         cy += 14
 
-        # saldos (com o porquê: pagou vs cota)
+        # saldos (com o porquê: pagou vs cota, e a composição da cota)
         for n in rows:
             v = bal[n]
             d.text((PAD + 4, cy), n, font=f_name, fill=C_TEXT)
-            brk = "pagou " + fmt(paid[n], sym) + "  −  cota " + fmt(owed[n], sym)
-            d.text((PAD + 4, cy + 32), brk, font=f_small, fill=C_MUTED)
             if v > 0:   txt, col, lbl = fmt(v, sym), C_GREEN, "a receber"
             elif v < 0: txt, col, lbl = fmt(v, sym), C_RED, "a pagar"
             else:       txt, col, lbl = fmt(0, sym), C_MUTED, "quitado"
-            d.text((W - PAD - _md.textlength(txt, font=f_val), cy), txt, font=f_val, fill=col)
-            d.text((W - PAD - _md.textlength(lbl, font=f_lbl), cy + 32), lbl, font=f_lbl, fill=C_MUTED)
-            cy += 60
+            tw = _md.textlength(txt, font=f_val)
+            d.text((W - PAD - tw, cy), txt, font=f_val, fill=col)
+            lw = _md.textlength(lbl, font=f_lbl)
+            d.text((W - PAD - tw - 12 - lw, cy + 4), lbl, font=f_lbl, fill=C_MUTED)
+            lines = balance_row_lines(n, paid[n], owed[n], compras, sym)
+            for i, ln in enumerate(lines):
+                d.text((PAD + 4, cy + 32 + i * 24), ln, font=f_small, fill=C_MUTED)
+            cy += 32 + len(lines) * 24 + 16
 
         cy += 10
         # acerto
