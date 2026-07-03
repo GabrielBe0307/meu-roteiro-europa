@@ -116,8 +116,16 @@ def settle(bal):
     return tx
 
 # ---------- fontes ----------
+# Renderização em alta resolução (supersampling nativo): toda a lógica de
+# layout usa coordenadas "lógicas"; na hora de desenhar, um proxy multiplica
+# tudo por SCALE e troca a fonte pela versão ampliada -> texto nítido no zoom.
+SCALE = 3
 FD = "/usr/share/fonts/truetype/dejavu/"
-def F(name, size): return ImageFont.truetype(FD + name, size)
+_FONTS = {}  # fonte lógica (medição) -> fonte ampliada (desenho)
+def F(name, size):
+    lf = ImageFont.truetype(FD + name, size)
+    _FONTS[lf] = ImageFont.truetype(FD + name, size * SCALE)
+    return lf
 f_title  = F("DejaVuSans-Bold.ttf", 40)
 f_sub    = F("DejaVuSans.ttf", 24)
 f_sec    = F("DejaVuSans-Bold.ttf", 34)
@@ -148,7 +156,22 @@ C_CARD = (255, 255, 255)
 W = 1080
 PAD = 48
 CONTENT_W = W - 2 * PAD
-_md = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+_md = ImageDraw.Draw(Image.new("RGB", (10, 10)))  # medição em coordenadas lógicas
+
+class ScaledDraw:
+    """Desenha em alta resolução: escala coordenadas por SCALE e usa a fonte ampliada."""
+    def __init__(self, d): self.d = d
+    def _f(self, font): return _FONTS.get(font, font)
+    def text(self, xy, txt, font=None, fill=None):
+        self.d.text((xy[0] * SCALE, xy[1] * SCALE), txt, font=self._f(font), fill=fill)
+    def line(self, xy, fill=None, width=1):
+        self.d.line([c * SCALE for c in xy], fill=fill, width=max(1, width * SCALE))
+    def rectangle(self, xy, fill=None):
+        self.d.rectangle([c * SCALE for c in xy], fill=fill)
+    def rounded_rectangle(self, xy, radius=0, fill=None):
+        self.d.rounded_rectangle([c * SCALE for c in xy], radius=radius * SCALE, fill=fill)
+    def textlength(self, txt, font=None):
+        return self.d.textlength(txt, font=font)  # medição lógica (fonte lógica)
 
 def wrap(text, font, first_w, rest_w=None):
     rest_w = rest_w if rest_w is not None else first_w
@@ -257,8 +280,8 @@ def draw_image(exps):
     total_h += acum_card_height(acum_tx) + 28
     total_h += 90
 
-    img = Image.new("RGB", (W, total_h), C_BG)
-    d = ImageDraw.Draw(img)
+    img = Image.new("RGB", (W * SCALE, total_h * SCALE), C_BG)
+    d = ScaledDraw(ImageDraw.Draw(img))
 
     # header
     d.rectangle([0, 0, W, HEAD_H], fill=C_HEAD)
