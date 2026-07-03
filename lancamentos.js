@@ -38,6 +38,9 @@ window.LANCAMENTOS = [
   { desc: "Passeio Coliseu", valor: "1170,71", moeda: "BRL", pagou: ["Renan"], dividir: ["Rosana", "Fonte", "Renan", "Aline"] },
   { desc: "Hotel (Airbnb aeroporto)", valor: "1658,16", moeda: "BRL", pagou: ["Renan"], dividir: TODOS },
 
+  // ----- Gabriel pagou (Real) -----
+  { desc: "Uber de volta de Guarulhos", valor: "271,18", moeda: "BRL", pagou: ["Gabriel"], dividir: ["Gabriel", "Fonte", "Clara", "Rosana"] },
+
   // ----- Fonte pagou -----
   { desc: "Táxi Capri (ida e volta)", valor: "60,00", moeda: "EUR", pagou: ["Fonte"], dividir: TODOS },
 
